@@ -1,0 +1,36 @@
+const assert=require('node:assert/strict'),{transform,analyze,svg,reportHtml}=require('./lab');
+const chart={difficulty:'DPA',events:[[0,0,0,500],[0,0,1,0],[0,1,6,0],[0,0,7,0],[200,0,0,0],[999,0,2,0],[1000,0,3,0],[1500,2,0,1],[1500,3,6,2],[1500,4,1,150],[2000,12,0,0]]};
+let original=JSON.stringify(chart),r=transform(chart,'random','repeatable');
+assert.equal(JSON.stringify(chart),original);assert.deepEqual(r,transform(chart,'random','repeatable'));
+for(let map of r.randomization.maps)assert.deepEqual([...map].sort(),[1,2,3,4,5,6,7]);
+assert.deepEqual(r.events[3],chart.events[3]);assert.deepEqual(r.events[9],chart.events[9]);
+assert.equal(r.events[0][2],r.events[7][2]);assert.equal(r.events[2][2],r.events[8][2]);
+assert.deepEqual(transform(transform(chart,'mirror'),'mirror').events,chart.events);
+assert.throws(()=>transform(chart,'custom','0','1111111'));
+let a=analyze(chart),b=analyze(r);for(let k of ['note_heads','long_note_heads','scratch_heads','peak_rolling_1s_heads'])assert.equal(a[k],b[k]);
+assert.equal(a.peak_rolling_1s_heads,6);assert.equal(a.density[0].heads,6);assert.equal(a.density[1].heads,1);assert.equal(a.jack_intervals_le_250ms,1);
+assert.equal(a.note_heads,7);assert.equal(a.long_note_heads,1);assert.equal(a.chord_size_histogram[4],1);
+assert(svg(chart,'<unsafe>').includes('&lt;unsafe&gt;'));assert(!svg(chart,'<unsafe>').includes('<unsafe>'));
+// Execute the generated report's inline script with a minimal DOM, exercising the
+// actual browser code path, transforms and download setup without network access.
+const vm=require('node:vm');let el={};for(let id of ['mode','seed','mapping','playside','shuffle','stats','plot','error','density','apply','saveSvg','savePng','saveJson'])el[id]={value:id==='mode'?'random':id==='mapping'?'1234567/1234567':'42'};
+el.density.getContext=()=>({clearRect(){},fillRect(){},fillText(){}});
+let html=reportHtml({chart,metadata:{title:'Test </script> 安全'}},1000),script=html.match(/<script>([\s\S]*)<\/script>/)[1];
+vm.runInNewContext(script,{document:{getElementById:id=>el[id]},setTimeout,URL,Blob});
+assert(!el.stats.innerHTML.includes('音符头'));assert(!el.stats.innerHTML.includes('长条头'));assert(el.stats.innerHTML.includes('Notes'));assert(el.plot.innerHTML.includes('<svg'));assert(el.stats.innerHTML.includes('Lane Distribution'));assert.equal(el.error.textContent,'');assert(!el.stats.innerHTML.includes('"note_heads"'));
+const sp={...chart,difficulty:'SPA'};let sp1=svg(sp,'1P'),sp2=svg(sp,'2P',8,{playSide:'2p'});assert(sp1.includes('data-play-side="1p"'));assert(sp2.includes('data-play-side="2p"'));assert.equal(sp1.match(/data-lane="([^"]+)"/)[1],'S');assert.equal(sp2.match(/data-lane="([^"]+)"/)[1],'1');assert(svg(chart,'DP',8,{playSide:'2p'}).includes('data-play-side="both"'));assert.equal(JSON.stringify(chart),original);
+const {measureLayout}=require('./render');
+let tempoChart={difficulty:'SPA',events:[[0,4,1,120],[0,5,4,4],[0,12,0,0],[1000,4,1,60],[3000,12,0,0],[5000,12,0,0],[1000,0,0,3000],[4000,0,1,0]]};
+let layout=measureLayout(tempoChart);
+assert.equal(layout.bars.length,2);assert.equal(layout.position(1000),.5);assert.equal(layout.position(2000),.75);assert.equal(layout.position(3000),1);assert.equal(layout.position(4000),1.5);
+assert.equal(layout.inferredBars,false);assert(svg(tempoChart,'变速长条').includes('#002'));assert(!svg(tempoChart,'变速长条').includes('20s'));
+const tempoSVG=svg(tempoChart,'变速标记');assert(tempoSVG.includes('data-tempo-measure="1"'));assert(tempoSVG.includes('data-bpm-change="120→60"'));assert(tempoSVG.includes('stroke="#bf80ff" stroke-width="3"'));assert(tempoSVG.includes('data-bpm-label="change"'));
+assert(tempoSVG.includes('data-read-direction="bottom-up"'));
+const noteY=(drawing,t)=>Number(drawing.match(new RegExp('data-note-time="'+t+'"[^>]* y="([^"]+)"'))[1]);
+assert(noteY(tempoSVG,1000)>noteY(tempoSVG,4000),'later notes must appear above earlier notes');
+const faster=svg(tempoChart,'Hi-Speed',8,{hiSpeed:2});assert.equal(noteY(faster,1000)-noteY(faster,4000),2*(noteY(tempoSVG,1000)-noteY(tempoSVG,4000)));assert.equal(noteY(svg(tempoChart,'default',8,{hiSpeed:1}),1000),noteY(tempoSVG,1000));
+const nine={difficulty:'SPA',events:[[0,4,1,120],[0,5,4,4],...Array.from({length:10},(_,i)=>[i*2000,12,0,0]),[0,0,0,0],[15000,0,1,2000],[16000,0,2,0],[17000,0,3,0]]};
+const nineSVG=svg(nine,'跨列');assert.equal(noteY(nineSVG,0),noteY(nineSVG,16000),'partial final column must align to the same bottom');assert(noteY(nineSVG,17000)<noteY(nineSVG,16000));assert.equal((nineSVG.match(/data-long-note="15000"/g)||[]).length,2,'long note splits correctly at the column boundary');
+const steady={difficulty:'SPA',events:[[0,4,1,120],[500,4,1,120],[0,12,0,0],[2000,12,0,0],[1000,0,0,0]]};assert(!svg(steady,'重复 BPM').includes('data-tempo-measure='));
+let odd={difficulty:'SPA',events:[[0,4,1,120],[0,5,8,7],[100,0,0,0],[1800,0,1,0]]},fallback=measureLayout(odd);assert.equal(fallback.inferredBars,true);assert.equal(fallback.bars[0].end,1750);assert.equal(fallback.bars[0].meter,'7/8');
+console.log('PASS: random invariants, density, report execution, BPM integration, bar boundaries, crossing long notes, 7/8 fallback, graphical dashboard');

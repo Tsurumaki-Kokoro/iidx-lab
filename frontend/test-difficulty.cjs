@@ -1,0 +1,3 @@
+const assert=require('node:assert/strict'),{difficultyPresentation:p}=require('./src/difficulty.mjs');
+assert.equal(p({difficulty:'SPA'}).tone,'another');assert.equal(p({difficulty:'SPH'}).tone,'hyper');assert.equal(p({difficulty:'SPN'}).tone,'normal');assert.equal(p({difficulty:'SPL'}).tone,'leggendaria');
+assert.deepEqual(p({difficulty:'SPB'}),{label:'BEGINNER',tone:'beginner',name:'BEGINNER'});assert.equal(p({difficulty:'SPB',variant:'black'}).tone,'black');assert.equal(p({difficulty:'SPA',variant:'black_another'}).label,'SPB');assert.equal(p({difficulty:'DPA'}).tone,'another');assert.equal(p({difficulty:'DPB'}).tone,'beginner');console.log('PASS: difficulty colors, Beginner separated from explicitly tagged Black Another, SP/DP');

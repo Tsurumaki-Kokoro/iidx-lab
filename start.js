@@ -1,0 +1,12 @@
+const readline=require('node:readline/promises'),{stdin,stdout}=require('node:process'),{spawnSync}=require('node:child_process'),path=require('node:path');
+(async()=>{const rl=readline.createInterface({input:stdin,output:stdout});
+console.log('IIDXLab · 独立离线谱面分析\n可复制整个 IIDXLab 文件夹运行。输入曲名或 ID 搜索。');
+while(true){let q=await rl.question('\n搜索（空白退出）：');if(!q)break;
+spawnSync(process.execPath,[path.join(__dirname,'lab.js'),'list',q],{stdio:'inherit'});
+let key=await rl.question('完整 key（空白重新搜索）：');if(!key)continue;
+let diff=await rl.question('难度（例如 SPA / SPL / DPA）：');
+let mode=(await rl.question('排列 normal / random / mirror [normal]：'))||'normal';
+let seed=(await rl.question('随机种子 [0]：'))||'0';
+spawnSync(process.execPath,[path.join(__dirname,'lab.js'),'report',key,diff,'--mode',mode,'--seed',seed],{stdio:'inherit'});
+console.log('在 reports 文件夹中打开刚生成的 HTML，可交互切换随机并下载数据。');
+}rl.close();})();

@@ -1,0 +1,30 @@
+# Local game-derived data and reports
+/dataset/
+/dataset-source/
+/dataset-next/
+/reports/
+
+# Bundled runtimes and third-party extraction packages
+/runtime/
+/vendor/
+node_modules/
+
+# Generated frontend and browser QA artifacts
+/frontend/dist/
+/frontend/IIDXLab-static.zip
+/frontend/qa-*.png
+/frontend/qa-export.json
+/frontend/qa-report.html
+
+# Local secrets, caches and editor state
+.env
+.env.*
+!.env.example
+*.log
+__pycache__/
+*.py[cod]
+.vite/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),{browseSongs,titleFolder,versionLabel,getOmniInfo,isOmniSource}=require('./src/browse.mjs');
+const song=(id,title,ascii,style,levels)=>({id,key:id+'-hash',metadata:{title,title_ascii:ascii,style,levels,artist:'artist'},charts:Object.keys(levels).map(difficulty=>({difficulty}))});
+const songs=[song('01000','5.1.1.','5.1.1.',0,{SPN:1,SPA:5,DPA:6}),song('01004','Macho Gang','MACHO GANG',1,{SPN:4,SPA:7}),song('12004','冥','MEI',12,{SPH:10,SPA:12,DPA:12}),song('34001','全角','ＡLPHA',34,{SPA:12}),song('99999','未分类','',undefined,{SPA:0})];
+assert.equal(versionLabel(34),'34 · ZINRAI');assert.equal(versionLabel(0),'1st style');assert.equal(versionLabel(1),'substream');assert.equal(titleFolder(songs[2]),'M');assert.equal(titleFolder(songs[3]),'A');
+let r=browseSongs(songs,{groupBy:'version',category:'0'});assert.deepEqual(r.entries.map(e=>e.song.id),['01000']);assert.equal(r.entries[0].difficulty,'SPA');
+r=browseSongs(songs,{groupBy:'level',category:'12',playMode:'SP'});assert.equal(r.entries.length,2);assert(r.entries.every(e=>e.difficulty==='SPA'&&e.level===12));
+r=browseSongs(songs,{groupBy:'level',category:'12',playMode:'DP'});assert.equal(r.entries.length,1);assert.equal(r.entries[0].difficulty,'DPA');
+r=browseSongs(songs,{groupBy:'level',category:'10',difficulty:'A'});assert.equal(r.entries.length,0);
+r=browseSongs(songs,{groupBy:'level',category:'unknown'});assert.equal(r.entries.length,1);assert.equal(r.entries[0].level,null);
+r=browseSongs(songs,{groupBy:'title',category:'M'});assert.deepEqual(r.entries.map(e=>e.song.id),['01004','12004']);
+r=browseSongs(songs,{groupBy:'title',query:'mei'});assert.equal(r.totalSongs,1);assert.equal(r.entries[0].song.id,'12004');
+assert.equal(browseSongs(songs,{groupBy:'version',category:'12',query:'not found'}).entries.length,0);
+assert.throws(()=>browseSongs(songs,{playMode:'invalid'}));console.log('PASS: original styles incl. substream, exact chart-level filtering, SP/DP, difficulty, game sort titles, missing data, combined search');
+assert(isOmniSource('LDJ-33/data_mods/omnimix_33.0_full/sound/01002/01002.1'));assert(isOmniSource('LDJ-34/data_mods/omnimix/sound/01002.ifs'));assert(!isOmniSource('LDJ-33/data/sound/01002.ifs'));
+const mixed={charts:[{difficulty:'SPA',provenance:{source:'LDJ-33/data/sound/1.ifs'}},{difficulty:'SPL',provenance:{source:'LDJ-33/data_mods/omnimix_33.0_full/sound/1.ifs'}}]};assert.deepEqual(getOmniInfo(mixed),{isOmni:true,partial:true,difficulties:['SPL']});assert.equal(getOmniInfo(songs[0]).isOmni,false);assert.equal(getOmniInfo({charts:[mixed.charts[1]]}).partial,false);console.log('PASS: omni provenance, partial omni difficulties, base-song exclusion');
