@@ -14,6 +14,7 @@ node_modules/
 /frontend/IIDXLab-static.zip
 /frontend/qa-*.png
 /frontend/qa-export.json
+/frontend/qa-theme-export.json
 /frontend/qa-report.html
 
 # Local secrets, caches and editor state
@@ -28,3 +29,15 @@ __pycache__/
 Thumbs.db
 .idea/
 .vscode/
+
+# Customization research: extracted assets and downloaded reference docs
+/research/customization/samples/
+/research/customization/demo/
+/research/customization/reference/
+/research/customization/*-members.json
+/research/customization/inventory.json
+/research/customization/customization-preview.zip
+/research/customization/expanded-inventory.json
+/qpro-data/
+/theme-data/
+/research/customization/render-probe/

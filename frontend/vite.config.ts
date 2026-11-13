@@ -15,6 +15,27 @@ export default defineConfig({
     {
       name: "iidxlab-static-data",
       configureServer(server) {
+        server.middlewares.use('/theme',(req,res,next)=>{
+          try{const root=path.resolve(dataRoot,'../theme'),file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url||'/', 'http://localhost').pathname));
+            if(!file.startsWith(root+path.sep)||!existsSync(file)||!['.json','.png'].includes(path.extname(file)))return next();
+            res.setHeader('Content-Type',file.endsWith('.json')?'application/json':'image/png');
+            createReadStream(file).on('error',()=>res.destroy()).pipe(res);
+          }catch{next()}
+        });
+        server.middlewares.use('/qpro',(req,res,next)=>{
+          try{const root=path.resolve(dataRoot,'../qpro'),file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url||'/', 'http://localhost').pathname));
+            if(!file.startsWith(root+path.sep)||!existsSync(file)||!['.json','.png'].includes(path.extname(file)))return next();
+            res.setHeader('Content-Type',file.endsWith('.json')?'application/json':'image/png');
+            createReadStream(file).on('error',()=>res.destroy()).pipe(res);
+          }catch{next()}
+        });
+        server.middlewares.use('/customization',(req,res,next)=>{
+          try{const root=path.resolve(dataRoot,'../customization'),file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url||'/', 'http://localhost').pathname));
+            if(!file.startsWith(root+path.sep)||!existsSync(file)||!['.json','.png'].includes(path.extname(file)))return next();
+            res.setHeader('Content-Type',file.endsWith('.json')?'application/json':'image/png');
+            createReadStream(file).on('error',()=>res.destroy()).pipe(res);
+          }catch{next()}
+        });
         const sdkFiles = new Set(["index.mjs", "core.mjs", "render.mjs", "browse.mjs", "difficulty.mjs"]);
         server.middlewares.use((req,res,next)=>{
           const name=new URL(req.url||"/", "http://localhost").pathname.slice(1);

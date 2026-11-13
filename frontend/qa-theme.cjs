@@ -1,0 +1,44 @@
+const {chromium}=require('C:/Users/YC-DESKTOP/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+(async()=>{const server=require('node:child_process').spawn(process.execPath,[path.join(__dirname,'preview.cjs')],{env:{...process.env,PORT:'4177'},windowsHide:true});await new Promise((resolve,reject)=>{server.stdout.once('data',resolve);server.once('error',reject)});let browser;try{
+ browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+ const context=await browser.newContext({viewport:{width:1440,height:1000},permissions:['clipboard-read','clipboard-write']});const page=await context.newPage(),errors=[],external=[];
+ page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4177/')&&!r.url().startsWith('blob:'))external.push(r.url())});
+ const choose=async(label,name)=>{await page.getByRole('combobox',{name:label,exact:true}).click();await page.getByRole('option',{name,exact:true}).click()};
+ const readyImage=async()=>{await page.waitForFunction(()=>{const image=document.querySelector('[data-testid="asset-preview"] img');return image&&image.complete&&image.naturalWidth>0})};
+ await page.goto('http://127.0.0.1:4177/?module=theme');
+ const lane=page.getByTestId('theme-lane');await lane.waitFor();
+ const head=page.getByTestId('theme-hold-head'),tail=page.getByTestId('theme-hold-tail');
+ await page.waitForFunction(()=>{const y=document.querySelector('[data-testid="theme-hold-head"]')?.getAttribute('y');return y!=null&&+y>165&&+y<390});
+ const firstY=Number(await head.getAttribute('y'));
+ await page.waitForFunction(y=>Number(document.querySelector('[data-testid="theme-hold-head"]')?.getAttribute('y'))>y+8,firstY);
+ await page.getByRole('checkbox',{name:'播放谱道动画'}).uncheck();
+ assert(Math.abs(Number(await head.getAttribute('y'))-Number(await tail.getAttribute('y'))-125)<0.01);
+ await page.getByRole('checkbox',{name:'播放谱道动画'}).check();
+ await page.waitForFunction(()=>document.querySelectorAll('[data-theme-effect="beam"]').length===3&&!document.querySelector('[data-testid="theme-hold-head"]'));
+ await choose('资源版本','34 · ZINRAI');
+ await choose('Turntable Decal','30 · CastHour');
+ await page.getByRole('checkbox',{name:'播放谱道动画'}).uncheck();
+ await page.getByRole('slider',{name:/SUDDEN/}).focus();await page.keyboard.press('End');
+ assert.equal(await lane.locator('clipPath rect').getAttribute('y'),'270');
+ await page.getByRole('button',{name:'Turntable Decal 素材和设置 ID'}).click();await readyImage();
+ assert.equal(await page.getByTestId('theme-setting-id').innerText(),'turntable = 30');
+ await page.getByRole('button',{name:'组合预览',exact:true}).click();
+ assert.match(await page.getByRole('combobox',{name:'Turntable Decal',exact:true}).innerText(),/CastHour/);
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:path.join(__dirname,'qa-theme-composer.png')});
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.setViewportSize({width:1440,height:1000});
+ await page.reload();await page.getByRole('button',{name:'素材浏览',exact:true}).click();await readyImage();
+ assert.equal(await page.getByTestId('theme-setting-id').innerText(),'turntable = 0');
+ await page.getByLabel('搜索名称 / ID / 资源',{exact:true}).fill('CastHour');await readyImage();assert.equal(await page.getByTestId('theme-setting-id').innerText(),'turntable = 30');
+ await page.getByRole('button',{name:'复制设置 ID',exact:true}).click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'30');
+ const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'JSON',exact:true}).click();const download=await downloadPromise;await download.saveAs(path.join(__dirname,'qa-theme-export.json'));assert.equal(JSON.parse(fs.readFileSync(path.join(__dirname,'qa-theme-export.json'))).value,30);
+ await page.getByLabel('搜索名称 / ID / 资源',{exact:true}).fill('turn22');await readyImage();assert(await page.getByText('本地插件名称表存在冲突',{exact:true}).isVisible());assert.equal(await page.getByTestId('theme-setting-id').innerText(),'turntable = 22');
+ const categories=['Frame','Note Burst','SUDDEN+ Cover','Lift Cover','Note Skin','Charge Note Skin','HCN Skin','Full Combo Effect','Note Beam','Judge Font','Pacemaker Skin','Premium Area Skin','Premium Area Background','Concentration Mode Background','Entry Card Background','Breaking News'];
+ for(const name of categories){await choose('Theme 类别',name);await readyImage();}
+ for(const name of ['First Note Preview','Disable HCN Colors','Effector Preset']){await choose('Theme 类别',name);assert(await page.getByText('参数设置，无独立图像',{exact:true}).isVisible());}
+ await choose('Theme 类别','Premium Area Background');await readyImage();assert((await page.getByTestId('theme-detail').innerText()).includes('sub_customize_bg001.ifs'));assert.equal(await page.getByTestId('theme-setting-id').innerText(),'lm_bg = 0');
+ await choose('资源版本','34 · ZINRAI');await readyImage();
+ await page.screenshot({path:path.join(__dirname,'qa-theme-complete.png'),fullPage:true});await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log('PASS Theme: 20 categories, real setting IDs, local-plugin mismatch, ID clipboard/JSON, XML default mapping, 33/34, all local assets, mobile');
+ }finally{if(browser)await browser.close();server.kill()}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
+import App from "./Workspace.tsx";
 import { TooltipProvider } from "./components/ui/tooltip";
 import "./styles.css";
 

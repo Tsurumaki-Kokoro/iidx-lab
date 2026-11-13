@@ -20,6 +20,8 @@ Hi-Speed 可在 0.25–4× 范围调节小节高度和 Note 垂直间距，默�
 
 ## 开发与构建
 
+谱面页仅从开发者发布的静态曲库读取谱面。更新曲库后重新构建并发布 `dist/`；访客可导出 JSON 报告。
+
 已安装并遵循官方 `shadcn-ui/ui` 的 `skills/shadcn` skill。原始 `a1l2B0K` 中的 mist 底色 + neutral 主题被官方 registry 拒绝（HTTP 400），因此按用户选择改成 neutral 底色，保留 neutral 主题。使用官方 CLI 初始化 `nova`，再配置 Nunito Sans；`components.json` 和 `src/styles.css` 为实际配置。当前官方 CLI 检测到的兼容 preset 为 `bX2`（nova / neutral 底色 / neutral 主题与图表 / lucide / nunito-sans / 默认圆角 / subtle menu accent）。
 
 ```powershell
@@ -114,3 +116,19 @@ Lane mapping 右侧为 IIDXLab 自定义六维雷达，小屏纵向排列。数�
 - CHORD：同一侧同一时间至少两个 Note 所包含的 Notes 占比 / 80%，包含 Scratch；DP 两侧单独分组。
 
 六项比率乘 100 后显示一位小数，使用当前变换后的谱面，Hi-Speed 与 NPS interval 不影响雷达。公式位于 src/radar.mjs，可替换为经过验证的官方算法或曲库校准版本。
+
+## 顶层模块菜单
+
+默认打开三模块大菜单：谱面预览、Qpro、Theme，顶部导航可随时切换并返回菜单。URL 使用 `?module=charts|qpro|theme|home`；旧的 `#key=...&difficulty=...` 谱面链接仍直接打开谱面。谱面模块按需加载。
+
+Qpro 提供 head、hair、hand、body、face、qproback 六类共 2,380 个选项，支持按游戏 ID 选择、组合预览、Randomize、Suit（Based on body）、本地保存和 PNG / JSON 下载。默认组合对应参考图中的 ID。预览使用静态 Neutral pose；34 代新增部件标记“静态兼容”，未还原完整动画、网格变形与特殊效果。全量原始素材、提取方法和数量见 `../research/customization/QPRO-EXPORT.md`。
+
+Theme 已改为完整相关资源目录：33/34 共 952 个去重包、25,529 张原始纹理，网页去重后 10,763 张 PNG。支持 20 类独立查看、名称 / ID / 资源搜索、版本切换、变体和全部纹理分页、复制设置 ID 与 JSON 导出。未核实编号禁止直接复制。非默认 Frame 的 ID、部分背景与 Entry 名称仍待核实；用户本地插件 Turntable 标签存在编号冲突，页面显示提示。详见 ../research/customization/THEME-EXPORT.md。
+
+构建将 ../theme-data/web/ 复制到 dist/theme/；包含 catalog.json、setting-ids.csv 与全部 PNG，成品不读取氧无服务或 HDD。
+
+Theme 默认显示集中设置与 1P 组合预览。谱道使用本地素材模拟落键、判定与遮挡，支持 SUDDEN+ / LIFT 高度和动画开关。全连特效、Pacemaker 和背景类保留独立静态预览；切换到素材浏览可查看变体、纹理和已核实的设置 ID。预览不会写入游戏或服务端。
+
+`build.cjs` 会将本地 `../research/customization/demo/catalog.json` 与 assets 复制到 dist/customization，成品不依赖研究目录或 HDD。首次准备素材可运行研究目录的 build_demo.py；生成素材不提交到 Git。Vite dev 和生产预览均支持这些资源。
+
+Qpro 构建资源来自 `../qpro-data/web/`，复制到 `dist/qpro/`，包含索引及 3,768 张透明 PNG。部署成品只需静态服务器，不需要原始 HDD、提取工具或游戏 DLL。素材单独使用时，读取 catalog.json 的部件 layers，按 back、head_b、hair_b、body、hand_r、face、hair_f、head_f、hand_l 顺序绘制到 520×704 画布。

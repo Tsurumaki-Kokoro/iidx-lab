@@ -179,14 +179,29 @@
 }
 
 :root {
-  --radar-notes: #3478d4;
-  --radar-peak: #d83d50;
-  --radar-scratch: #bd6b0a;
-  --radar-soflan: #8850bd;
-  --radar-charge: #24874e;
-  --radar-chord: #bc418d;
+  --radar-notes: #a561a8;
+  --radar-chord: #819b57;
+  --radar-peak: #a58361;
+  --radar-charge: #6c529b;
+  --radar-scratch: #8f5855;
+  --radar-soflan: #647e9f;
+  --plot-notes: #3478d4;
+  --plot-highlight: #d83d50;
+  --plot-charge: #24874e;
 }
 
 .difficulty-toggle { color: var(--difficulty-color); }
 .difficulty-toggle:hover { color: var(--difficulty-color); background: color-mix(in srgb, var(--difficulty-color) 8%, transparent); }
 .difficulty-toggle[aria-pressed="true"] { color: var(--difficulty-color); background: color-mix(in srgb, var(--difficulty-color) 14%, transparent); box-shadow: inset 0 0 0 1px currentColor; }
+
+.workspace-nav { position: sticky; top: 0; z-index: 20; }
+.asset-stage { display: grid; place-items: center; min-height: 360px; padding: 24px; overflow: hidden; border-radius: var(--radius); background: repeating-conic-gradient(var(--muted) 0% 25%,var(--background) 0% 50%) 0 / 20px 20px; }
+.asset-stage img { max-width: 100%; max-height: 65vh; object-fit: contain; }
+.asset-stage .decal-image { width: 200px; height: 200px; }
+[data-slot="sidebar-container"] { top: var(--workspace-nav-height, 57px); height: calc(100svh - var(--workspace-nav-height, 57px)); }
+@media(max-width:767px) { .asset-stage { min-height: 280px; padding: 12px; } }
+
+[data-slot="sidebar-wrapper"] { min-height: calc(100svh - var(--workspace-nav-height, 57px)); }
+
+.qpro-stage { min-height: 0; padding: 0; }
+.qpro-stage canvas { display: block; width: min(100%,520px); height: auto; }

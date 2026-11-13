@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DownloadIcon,
   ShuffleIcon,
-  UploadIcon,
   Music2Icon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarFooter,
   SidebarInset,
   SidebarTrigger,
   SidebarGroup,
@@ -50,8 +48,10 @@ import {
 import {
   Bar,
   BarChart,
+  Cell,
   Area,
   AreaChart,
+  ReferenceDot,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -162,11 +162,18 @@ function Plot({
   title,
   data,
   area = false,
+  color = "var(--chart-2)",
+  showPeak = false,
 }: {
   title: string;
   data: Data[];
   area?: boolean;
+  color?: string;
+  showPeak?: boolean;
 }) {
+  const peak = showPeak
+    ? data.reduce<Data | undefined>((best, point) => !best || point.value > best.value ? point : best, undefined)
+    : undefined;
   const axes = (
     <>
       <CartesianGrid vertical={false} />
@@ -187,11 +194,11 @@ function Plot({
       </CardHeader>
       <CardContent>
         <ChartContainer
-          config={{ value: { label: title, color: "var(--chart-2)" } }}
+          config={{ value: { label: title, color } }}
           className="h-52 w-full"
         >
           {area ? (
-            <AreaChart data={data}>
+            <AreaChart data={data} margin={peak ? { top: 20, right: 24, left: 8 } : undefined}>
               {axes}
               <Area
                 type="step"
@@ -200,11 +207,25 @@ function Plot({
                 fill="var(--color-value)"
                 fillOpacity={0.2}
               />
+              {peak && peak.value > 0 && (
+                <ReferenceDot
+                  x={peak.label}
+                  y={peak.value}
+                  r={4}
+                  fill="var(--plot-highlight)"
+                  stroke="var(--background)"
+                  label={{ value: Number(peak.value.toFixed(2)), position: "top", fill: "var(--plot-highlight)", fontSize: 12 }}
+                />
+              )}
             </AreaChart>
           ) : (
             <BarChart data={data}>
               {axes}
-              <Bar dataKey="value" fill="var(--color-value)" radius={3} />
+              <Bar dataKey="value" fill="var(--color-value)" radius={3}>
+                {data.map((entry) => entry.fill ? (
+                  <Cell key={entry.label} fill={entry.fill} stroke={entry.stroke} />
+                ) : null)}
+              </Bar>
             </BarChart>
           )}
         </ChartContainer>
@@ -531,18 +552,22 @@ function Study({
             <Plot
               title="NPS"
               area
+              color="var(--plot-notes)"
+              showPeak
               data={stats.density.map((d: Data) => ({
                 label: (d.start_ms / 1000).toFixed(1) + "s",
                 value: d.nps,
               }))}
             />
-            <Plot title="Notes / 小节" data={perMeasure} />
+            <Plot title="Notes / 小节" color="var(--plot-notes)" data={perMeasure} />
             <Plot
               title="Notes / Lane"
               data={stats.lane_heads
                 .map((value: number, i: number) => ({
                   label: `${Math.floor(i / 8) + 1}P ${i % 8 === 7 ? "S" : (i % 8) + 1}`,
                   value,
+                  fill: i % 8 === 7 ? "#d83d50" : i % 2 === 0 ? "#fafafa" : "#3478d4",
+                  stroke: i % 8 !== 7 && i % 2 === 0 ? "#737373" : undefined,
                 }))
                 .filter(
                   (_: unknown, i: number) =>
@@ -551,12 +576,18 @@ function Study({
             />
             <Plot
               title="Chord size"
+              color="var(--radar-chord)"
               data={Object.entries(stats.chord_size_histogram).map(
-                ([label, value]) => ({ label, value }),
+                ([label, value]) => ({
+                  label,
+                  value,
+                  fill: `color-mix(in oklch, var(--radar-chord) ${Math.min(100, 45 + Number(label) * 8)}%, var(--background))`,
+                }),
               )}
             />
             <Plot
               title="Chord span"
+              color="color-mix(in oklch, var(--radar-chord) 62%, var(--background))"
               data={Object.entries(stats.chord_span_histogram).map(
                 ([label, value]) => ({ label, value }),
               )}
@@ -567,9 +598,10 @@ function Study({
                 {
                   label: "Keys",
                   value: stats.note_heads - stats.scratch_heads,
+                  fill: "var(--plot-notes)",
                 },
-                { label: "Scratch", value: stats.scratch_heads },
-                { label: "Long Notes", value: stats.long_note_heads },
+                { label: "Scratch", value: stats.scratch_heads, fill: "var(--plot-highlight)" },
+                { label: "Long Notes", value: stats.long_note_heads, fill: "var(--plot-charge)" },
               ]}
             />
           </div>
@@ -597,8 +629,7 @@ export default function App() {
     [bundle, setBundle] = useState<Data | null>(null),
     [loading, setLoading] = useState(false),
     [playSide, setPlaySide] = useState("1p");
-  const request = useRef(0),
-    importRef = useRef<HTMLInputElement>(null);
+  const request = useRef(0);
   async function show(key: string, chartDifficulty?: string) {
     const token = ++request.current;
     setLoading(true);
@@ -836,40 +867,6 @@ export default function App() {
             </Button>
           )}
         </SidebarContent>
-        <SidebarFooter>
-          <Button variant="outline" onClick={() => importRef.current?.click()}>
-            <UploadIcon data-icon="inline-start" />
-            打开 JSON
-          </Button>
-          <input
-            ref={importRef}
-            type="file"
-            accept=".json,application/json"
-            className="sr-only"
-            aria-label="导入报告"
-            onChange={async (e) => {
-              try {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const data = JSON.parse(await file.text());
-                if (!data.chart?.events || !data.metadata)
-                  throw Error("请选择完整的谱面报告 JSON");
-                ++request.current;
-                setLoading(false);
-                setSelected(null);
-                setBundle(data);
-                setError("");
-                if (["1p", "2p"].includes(data.display?.playSide))
-                  setPlaySide(data.display.playSide);
-                history.replaceState(null, "", location.pathname);
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                if (importRef.current) importRef.current.value = "";
-              }
-            }}
-          />
-        </SidebarFooter>
       </Sidebar>
       <SidebarInset className="min-w-0">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
